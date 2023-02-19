@@ -1,0 +1,43 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15.1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+  app:
+    &app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    volumes:
+      - .:/workspace
+      - gomod-cache:/go/pkg/mod
+      - gobuild-cache:/.cache/go-build
+    entrypoint: "bash -c"
+  backend:
+    <<: *app
+    links:
+      - db
+    restart: always
+    working_dir: /workspace/backend
+    ports:
+      - "8081:8081"
+    entrypoint: "nodemon --ext go,yaml --signal SIGTERM --exec go run cmd/main.go serve"
+  frontend:
+    <<: *app
+    links:
+      - backend
+    restart: always
+    working_dir: /workspace/frontend
+    ports:
+      - "8080:8080"
+    entrypoint: "yarn dev"
+volumes:
+  dbdata: {}
+  gomod-cache: {}
+  gobuild-cache: {}
